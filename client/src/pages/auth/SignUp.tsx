@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/useAuthStore';
+import { authApi } from '../../services/api';
 import { 
   Brain, 
   Mail, 
@@ -35,6 +39,8 @@ interface PasswordStrength {
 }
 
 const SignUp: React.FC = () => {
+  const navigate = useNavigate();
+  const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [formData, setFormData] = useState<SignUpFormData>({
     firstName: '',
@@ -44,7 +50,26 @@ const SignUp: React.FC = () => {
     password: '',
     agreeToTerms: false
   });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const signupMutation = useMutation({
+    mutationFn: async (data: SignUpFormData) => {
+      return authApi.signup({
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        password: data.password,
+        phone: data.company, // Using company field as phone for now
+        role: 'gurardian'
+      });
+    },
+    onSuccess: (data) => {
+      setUser(data.user);
+      navigate('/dashboard');
+    },
+    onError: (error: any) => {
+      console.error('Signup error:', error);
+      alert(error.response?.data?.message || 'An error occurred during signup');
+    }
+  });
 
   const features: FeatureItem[] = [
     {
@@ -106,18 +131,7 @@ const SignUp: React.FC = () => {
       return;
     }
     
-    setIsLoading(true);
-    
-    // Simulate API call
-    try {
-      console.log('Sign up data:', formData);
-      // Your registration logic here
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-      console.error('Sign up error:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    signupMutation.mutate(formData);
   };
 
   const isFormValid = formData.firstName && 
@@ -289,10 +303,10 @@ const SignUp: React.FC = () => {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              disabled={isLoading || !isFormValid}
+              disabled={signupMutation.isPending || !isFormValid}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3 rounded-xl font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-blue-500/25 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
+              {signupMutation.isPending ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
